@@ -1,6 +1,7 @@
 <?php
 	wp_enqueue_script("couponjs",plugins_url( 'js/couponjs.js', __FILE__ ));
 	wp_enqueue_style("stylecss",plugins_url( 'css/style.css', __FILE__ ));
+	wp_enqueue_style("pagination-css",plugins_url( 'css/pagination.css', __FILE__ ));
 	if ($_GET['reference_no']) {
 		global $wpdb;
 		$ref = $_GET['reference_no'];
@@ -63,13 +64,23 @@
 	<?php } ?>
 	<?php 
 		global $wpdb;
+		$offset_value = 0;
+		if (!empty($_GET['page_no']) && is_numeric($_GET['page_no']) && ($_GET['page_no'] > 0)) {
+			$page_no = $_GET['page_no'];
+			$offset_value = 10 * ($page_no - 1);
+		}
 		$user_data_email = get_userdata(get_current_user_id());
 		$table1 = $wpdb->prefix . "cb_result_master";
 		$table2 = $wpdb->prefix . "users";
 		$table3 = $wpdb->prefix . "cb_test";
 		$table4 = $wpdb->prefix . "cb_coupon";
 		$coupon = $wpdb->get_results("SELECT t4.coupon_code AS coupon_code FROM `$table4` t4 WHERE t4.coupon_email = '".$user_data_email->user_email."' ");
-		$coupon_user_data = $wpdb->get_results("SELECT t1.ref_no AS ref_no, t3.name AS test_name, t2.display_name AS display_name FROM `$table1` t1, `$table2` t2, `$table3` t3 WHERE t1.uid = t2.ID AND t1.test_id = t3.test_id AND t1.applied_coupon = '".$coupon[0]->coupon_code."' ");
+		$sql_data = "SELECT t1.ref_no AS ref_no, t3.name AS test_name, t2.display_name AS display_name FROM `$table1` t1, `$table2` t2, `$table3` t3 WHERE t1.uid = t2.ID AND t1.test_id = t3.test_id AND t1.applied_coupon = '".$coupon[0]->coupon_code."' ORDER BY t2.display_name ASC LIMIT 10 OFFSET ".$offset_value." ";
+		$coupon_user_data = $wpdb->get_results($sql_data);
+
+		$sql_data_page = "SELECT count(*) FROM `$table1` t1, `$table2` t2, `$table3` t3 WHERE t1.uid = t2.ID AND t1.test_id = t3.test_id AND t1.applied_coupon = '".$coupon[0]->coupon_code."' ORDER BY t2.display_name ASC";
+		$total_no = $wpdb->get_var($sql_data_page);
+		$total_pages = ceil($total_no / 10);
 		//print_r($coupon_user_data);
 		
 
@@ -90,10 +101,10 @@
 			<th>Reference No</th>
 			<th>Report</th>
 			<?php
-				$i = 1; 
+				$offset_value =$offset_value + 1;
 				foreach ($coupon_user_data as $reference_no) {
 					echo "<tr>";
-					echo "<td>".$i++."</td>";
+					echo "<td>".$offset_value++."</td>";
 					echo "<td>".$reference_no->test_name."</td>";
 					echo "<td>".$reference_no->display_name."</td>";
 					echo "<td>".$reference_no->ref_no."</td>";
@@ -102,6 +113,31 @@
 				}
 			?>
 		</table>
+	</div><br /><br /><br />
+	<div class="center">
+		<div class="pagination">
+			<?php
+				$page_link = get_permalink();
+				for ($i=1; $i<=$total_pages; $i++) {
+					if ($page_no == $i) {
+					 	$state = "class='active'";
+					}
+					elseif (!isset($page_no)) {
+						$page_no = 1;
+						if ($page_no == $i) {
+							$state = "class='active'";
+						}
+						else {
+							$state = "";
+						}
+					}
+					else {
+						$state = "";
+					} 
+		            echo "<a href='".$page_link."?page_no=".$i."' ".$state.">".$i."</a> "; 
+				}
+			?>
+		</div>
 	</div>
 </div>
 	<?php }  ?>
